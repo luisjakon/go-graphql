@@ -1077,17 +1077,7 @@ func (executor *Executor) resolveGroupedFields(reqCtx *RequestContext, isParalle
 						wg.Done()
 					}
 				}()
-				var key string
-				var value interface{}
-				var err error
-				if src, ok := source.(func() (interface{}, error)); ok {
-					value, err = src()
-					if err == nil {
-						key, value, err = executor.getFieldEntry(reqCtx, objectType, value, responseKey, fields)
-					}
-				} else {
-					key, value, err = executor.getFieldEntry(reqCtx, objectType, source, responseKey, fields)
-				}
+				key, value, err := executor.getFieldEntry(reqCtx, objectType, source, responseKey, fields)
 				if err != nil {
 					errMutex.Lock()
 					errs = append(errs, err)
@@ -1142,7 +1132,15 @@ func (executor *Executor) getFieldEntry(reqCtx *RequestContext, objectType *Obje
 		return "", nil, err
 	}
 	subSelectionSet := executor.mergeSelectionSets(fields)
-	responseValue, err := executor.completeValueCatchingError(reqCtx, objectType, fieldType, firstField, resolvedObject, subSelectionSet)
+	var responseValue interface{}
+	if thunk, ok := resolvedObject.(func() (interface{}, error)); ok {
+		responseValue, err = thunk()
+		if err == nil {
+			responseValue, err = executor.completeValueCatchingError(reqCtx, objectType, fieldType, firstField, responseValue, subSelectionSet)
+		}
+	} else {
+		responseValue, err = executor.completeValueCatchingError(reqCtx, objectType, fieldType, firstField, resolvedObject, subSelectionSet)
+	}
 	if err != nil {
 		return "", nil, err
 	}
