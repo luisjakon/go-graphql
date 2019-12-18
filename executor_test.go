@@ -786,9 +786,7 @@ func TestExecutor(t *testing.T) {
 					args {
 						...InputValue
 					}
-					onOperation
-					onFragment
-					onField
+					locations
 				}
 			}
 		}
@@ -901,11 +899,9 @@ func TestExecutor(t *testing.T) {
 									},
 								},
 							},
+							"locations":   []interface{}{"FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"},
 							"description": "Conditionally exclude a field or fragment during execution",
 							"name":        "skip",
-							"onField":     true,
-							"onFragment":  true,
-							"onOperation": false,
 						},
 						map[string]interface{}{
 							"args": []interface{}{
@@ -923,11 +919,9 @@ func TestExecutor(t *testing.T) {
 									},
 								},
 							},
+							"locations":   []interface{}{"FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"},
 							"description": "Conditionally include a field or fragment during execution",
 							"name":        "include",
-							"onField":     true,
-							"onFragment":  true,
-							"onOperation": false,
 						},
 					},
 					"mutationType": interface{}(nil),

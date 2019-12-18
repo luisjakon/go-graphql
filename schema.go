@@ -88,10 +88,29 @@ enum __TypeKind {
 type __Directive {
   name: String!
   description: String
+  locations: [__DirectiveLocation!]!
   args: [__InputValue!]!
-  onOperation: Boolean!
-  onFragment: Boolean!
-  onField: Boolean!
+}
+
+enum __DirectiveLocation {
+	QUERY
+	MUTATION
+	SUBSCRIPTION
+	FIELD
+	FRAGMENT_DEFINITION
+	FRAGMENT_SPREAD
+	INLINE_FRAGMENT
+	SCHEMA
+	SCALAR
+	OBJECT
+	FIELD_DEFINITION
+	ARGUMENT_DEFINITION
+	INTERFACE
+	UNION
+	ENUM
+	ENUM_VALUE
+	INPUT_OBJECT
+	INPUT_FIELD_DEFINITION
 }
 `
 
@@ -283,9 +302,7 @@ func NewSchema(schemaDefinition string, queryRoot string, mutationRoot string) (
 							},
 						},
 					},
-					"onOperation": false,
-					"onField":     true,
-					"onFragment":  true,
+					"locations": []string{"FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"},
 				},
 				{
 					"name":        "include",
@@ -304,9 +321,7 @@ func NewSchema(schemaDefinition string, queryRoot string, mutationRoot string) (
 							},
 						},
 					},
-					"onOperation": false,
-					"onField":     true,
-					"onFragment":  true,
+					"locations": []string{"FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"},
 				},
 			},
 		}
