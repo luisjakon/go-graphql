@@ -3,10 +3,11 @@ package language
 import (
 	//"encoding/json"
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 var KITCHEN_SINK = `
@@ -364,6 +365,27 @@ fragment MissingOn Type`,
 			})
 			So(err, ShouldEqual, nil)
 			So(result.Definitions[0].(*OperationDefinition).SelectionSet.Selections[0].(*Field).ArgumentIndex["arg"].Value.(*String).Value, ShouldEqual, "Has a \u0A0A multi-byte character.")
+		})
+
+		Convey("parses single quote definitions", func() {
+			result, err = parser.Parse(&ParseParams{
+				Source: `
+                    "This is a type definition"
+                    type TestType {
+						"This is a field definition"
+						a: String
+
+						"This is a parameterized field definition"
+						b(id: IDENT!): String
+					}
+                `,
+				NoSource: true,
+			})
+			So(err, ShouldEqual, nil)
+
+			So(result.Definitions[0].(*ObjectTypeDefinition).Description, ShouldEqual, "This is a type definition")
+			So(result.Definitions[0].(*ObjectTypeDefinition).Fields[0].Description, ShouldEqual, "This is a field definition")
+			So(result.Definitions[0].(*ObjectTypeDefinition).Fields[1].Description, ShouldEqual, "This is a parameterized field definition")
 		})
 
 		Convey("parses kitchen sick", func() {
