@@ -3,10 +3,11 @@ package language
 import (
 	//"encoding/json"
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 var KITCHEN_SINK = `
@@ -1367,6 +1368,158 @@ input Hello {
 			})
 			So(err, ShouldNotEqual, nil)
 		})
+
+		Convey("directives with arguments on object", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `
+type AnnotatedObject @onObject(arg: "value") {
+	annotatedField(arg: Type @onArgumentDefinition): Type @onField
+}`,
+			})
+			So(err, ShouldEqual, nil)
+
+			obj := result.Definitions[0].(*ObjectTypeDefinition)
+			arg := obj.Directives[0].Arguments[0]
+
+			onInterface := obj.Directives[0].Name
+			onField := obj.Fields[0].Directives[0].Name
+			onArgDefinition := obj.Fields[0].Arguments[0].Directives[0].Name
+
+			So(onInterface.Value, ShouldEqual, "onObject")
+			So(onField.Value, ShouldEqual, "onField")
+			So(onArgDefinition.Value, ShouldEqual, "onArgumentDefinition")
+
+			So(obj.DirectiveIndex["onObject"], ShouldNotEqual, nil)
+			So(obj.Fields[0].DirectiveIndex["onField"], ShouldNotEqual, nil)
+			So(obj.Fields[0].Arguments[0].DirectiveIndex["onArgumentDefinition"], ShouldNotEqual, nil)
+
+			So(arg.Name.Value, ShouldEqual, "arg")
+			So(arg.Value.(*String).Value, ShouldEqual, "value")
+
+		})
+
+		Convey("directives on interface", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `
+interface AnnotatedInterface @onInterface {
+	annotatedField(arg: Type @onArgumentDefinition): Type @onField
+}`,
+			})
+			So(err, ShouldEqual, nil)
+
+			iface := result.Definitions[0].(*InterfaceTypeDefinition)
+
+			onInterface := iface.Directives[0].Name
+			onField := iface.Fields[0].Directives[0].Name
+			onArgDefinition := iface.Fields[0].Arguments[0].Directives[0].Name
+
+			So(onInterface.Value, ShouldEqual, "onInterface")
+			So(onField.Value, ShouldEqual, "onField")
+			So(onArgDefinition.Value, ShouldEqual, "onArgumentDefinition")
+
+			So(iface.DirectiveIndex["onInterface"], ShouldNotEqual, nil)
+			So(iface.Fields[0].DirectiveIndex["onField"], ShouldNotEqual, nil)
+			So(iface.Fields[0].Arguments[0].DirectiveIndex["onArgumentDefinition"], ShouldNotEqual, nil)
+
+		})
+
+		Convey("directives on union", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `union AnnotatedUnion @onUnion = A | B`,
+			})
+			So(err, ShouldEqual, nil)
+
+			union := result.Definitions[0].(*UnionTypeDefinition)
+			onUnion := union.Directives[0].Name
+
+			So(onUnion.Value, ShouldEqual, "onUnion")
+			So(union.DirectiveIndex["onUnion"], ShouldNotEqual, nil)
+
+		})
+
+		Convey("directives on scalar", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `scalar AnnotatedScalar @onScalar`,
+			})
+			So(err, ShouldEqual, nil)
+
+			scalar := result.Definitions[0].(*ScalarTypeDefinition)
+			onScalar := scalar.Directives[0].Name
+
+			So(onScalar.Value, ShouldEqual, "onScalar")
+			So(scalar.DirectiveIndex["onScalar"], ShouldNotEqual, nil)
+
+		})
+
+		Convey("directives on enums", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `
+enum AnnotatedEnum @onEnum {
+	ANNOTATED_VALUE @onEnumValue
+	OTHER_VALUE
+}`,
+			})
+			So(err, ShouldEqual, nil)
+
+			enum := result.Definitions[0].(*EnumTypeDefinition)
+
+			onEnum := enum.Directives[0].Name
+			onEnumValue := enum.Values[0].Directives[0].Name
+
+			So(onEnum.Value, ShouldEqual, "onEnum")
+			So(onEnumValue.Value, ShouldEqual, "onEnumValue")
+
+			So(enum.DirectiveIndex["onEnum"], ShouldNotEqual, nil)
+			So(enum.Values[0].DirectiveIndex["onEnumValue"], ShouldNotEqual, nil)
+
+		})
+
+		Convey("directives on input object", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `
+input AnnotatedInput @onInputObject {
+	annotatedField: Type @onInputFieldDefinition
+	}`,
+			})
+			So(err, ShouldEqual, nil)
+
+			obj := result.Definitions[0].(*InputObjectTypeDefinition)
+			onInputObject := obj.Directives[0].Name
+			onInputField := obj.Fields[0].Directives[0].Name
+
+			So(onInputObject.Value, ShouldEqual, "onInputObject")
+			So(onInputField.Value, ShouldEqual, "onInputFieldDefinition")
+
+			So(obj.DirectiveIndex["onInputObject"], ShouldNotEqual, nil)
+			So(obj.Fields[0].DirectiveIndex["onInputFieldDefinition"], ShouldNotEqual, nil)
+
+		})
+
+		Convey("directive definitions", func() {
+			result, err := parser.Parse(&ParseParams{
+				Source: `
+directive @skip(
+	if: Boolean! @onArgumentDefinition
+) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT`,
+			})
+			So(err, ShouldEqual, nil)
+
+			dir := result.Definitions[0].(*DirectiveDefinition)
+			arg := dir.Arguments[0].Directives[0]
+
+			So(dir.Name.Value, ShouldEqual, "skip")
+			So(arg.Name.Value, ShouldEqual, "onArgumentDefinition")
+
+			So(dir.LocationIndex["FIELD"], ShouldNotEqual, nil)
+			So(dir.LocationIndex["FRAGMENT_SPREAD"], ShouldNotEqual, nil)
+			So(dir.LocationIndex["INLINE_FRAGMENT"], ShouldNotEqual, nil)
+
+			So(dir.LocationIndex["SCHEMA"], ShouldEqual, nil)
+			So(dir.LocationIndex["OBJECT"], ShouldEqual, nil)
+			So(dir.LocationIndex["INPUT"], ShouldEqual, nil)
+
+		})
+
 	})
 
 }

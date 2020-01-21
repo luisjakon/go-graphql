@@ -271,6 +271,10 @@ func (parser *Parser) definition() (ASTNode, error) {
 			return parser.typeDefinition(description)
 		case "extend":
 			return parser.typeExtensionDefinition(description)
+		case "directive":
+			return parser.directiveDefinition(description)
+		case "schema":
+			return parser.schemaDefinition(description)
 		default:
 			return nil, &GraphQLError{
 				Message: fmt.Sprintf("GraphQL Syntax Error (%d:%d) Unexpected %s", parser.lookahead.Start.Line, parser.lookahead.Start.Column, parser.lookahead.String()),
@@ -578,6 +582,12 @@ func (parser *Parser) argument() (*Argument, error) {
 	node.Value, err = parser.valueLiteral(false)
 	if err != nil {
 		return nil, err
+	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
 	}
 	node.LOC = parser.loc(start)
 	return node, nil
@@ -1058,7 +1068,12 @@ func (parser *Parser) objectTypeDefinition(description string) (*ObjectTypeDefin
 			return nil, err
 		}
 	}
-
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
+	}
 	err = parser.match(LBRACE)
 	if err != nil {
 		return nil, err
@@ -1136,6 +1151,12 @@ func (parser *Parser) fieldDefinition() (*FieldDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
+	}
 	node.LOC = parser.loc(start)
 	return node, nil
 }
@@ -1203,6 +1224,12 @@ func (parser *Parser) inputValueDef() (*InputValueDefinition, error) {
 			return nil, err
 		}
 	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
+	}
 	node.LOC = parser.loc(start)
 	return node, nil
 }
@@ -1223,6 +1250,12 @@ func (parser *Parser) interfaceTypeDefinition(description string) (*InterfaceTyp
 	node.Name, err = parser.name()
 	if err != nil {
 		return nil, err
+	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = parser.match(LBRACE)
@@ -1261,6 +1294,12 @@ func (parser *Parser) unionTypeDefinition(description string) (*UnionTypeDefinit
 	node.Name, err = parser.name()
 	if err != nil {
 		return nil, err
+	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = parser.match(EQ)
 	if err != nil {
@@ -1315,6 +1354,12 @@ func (parser *Parser) scalarTypeDefinition(description string) (*ScalarTypeDefin
 	if err != nil {
 		return nil, err
 	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
+	}
 	node.LOC = parser.loc(start)
 	return node, nil
 }
@@ -1334,6 +1379,12 @@ func (parser *Parser) enumTypeDefinition(description string) (*EnumTypeDefinitio
 	node.Name, err = parser.name()
 	if err != nil {
 		return nil, err
+	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = parser.match(LBRACE)
 	if err != nil {
@@ -1382,6 +1433,12 @@ func (parser *Parser) enumValueDefinition() (*EnumValueDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
+	}
 	node.LOC = parser.loc(start)
 	return node, nil
 }
@@ -1402,6 +1459,12 @@ func (parser *Parser) inputObjectTypeDefinition(description string) (*InputObjec
 	node.Name, err = parser.name()
 	if err != nil {
 		return nil, err
+	}
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = parser.match(LBRACE)
 	if err != nil {
@@ -1444,4 +1507,131 @@ func (parser *Parser) typeExtensionDefinition(description string) (*TypeExtensio
 	}
 	node.LOC = parser.loc(start)
 	return node, nil
+}
+
+/**
+ * SchemaDefinition : schema Directives[Const]? { RootOperationTypeDefinition+ }
+ * RootOperationTypeDefinition : OperationType : NamedType
+ */
+func (parser *Parser) schemaDefinition(description string) (*SchemaDefinition, error) {
+	node := &SchemaDefinition{
+		Description: description,
+	}
+	fieldIndex := map[string]*FieldDefinition{}
+	start := parser.lookahead.Start
+	name, err := parser.name()
+	if err != nil {
+		return nil, err
+	}
+	node.Name = name
+	if parser.lookahead.Type == AT {
+		node.Directives, node.DirectiveIndex, err = parser.directives()
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = parser.match(LBRACE)
+	if err != nil {
+		return nil, err
+	}
+	for parser.lookahead.Type != RBRACE {
+		field, err := parser.fieldDefinition()
+		if err != nil {
+			return nil, err
+		}
+		node.Operations = append(node.Operations, field)
+		fieldIndex[field.Name.Value] = field
+	}
+	err = parser.match(RBRACE)
+	if err != nil {
+		return nil, err
+	}
+	if len(node.Operations) > 0 {
+		node.OperationIndex = fieldIndex
+	}
+	node.LOC = parser.loc(start)
+	return node, nil
+}
+
+/**
+ * DirectiveDefinition : Description? directive @ Name ArgumentsDefinition? repeatable? on DirectiveLocations
+ *
+ **/
+func (parser *Parser) directiveDefinition(description string) (*DirectiveDefinition, error) {
+	node := &DirectiveDefinition{
+		Description: description,
+	}
+	start := parser.lookahead.Start
+	err := parser.matchName("directive")
+	if err != nil {
+		return nil, err
+	}
+
+	err = parser.match(AT)
+	if err != nil {
+		return nil, err
+	}
+	node.Name, err = parser.name()
+	if err != nil {
+		return nil, err
+	}
+	if parser.lookahead.Type == LPAREN {
+		node.Arguments, node.ArgumentIndex, err = parser.argumentDefs(nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = parser.matchName("on")
+	if err != nil {
+		return nil, err
+	}
+	node.Locations, node.LocationIndex, err = parser.directiveLocations()
+	if err != nil {
+		return nil, err
+	}
+	node.LOC = parser.loc(start)
+	return node, nil
+}
+
+/**
+ *
+ * DirectiveLocations :
+ * 		DirectiveLocations | DirectiveLocation|? DirectiveLocation
+ *
+ * DirectiveLocation :
+ * 		ExecutableDirectiveLocation
+ * 		TypeSystemDirectiveLocation
+ *
+ * ExecutableDirectiveLocation : one of QUERY MUTATION SUBSCRIPTION FIELD FRAGMENT_DEFINITION FRAGMENT_SPREAD INLINE_FRAGMENT VARIABLE_DEFINITION
+ * TypeSystemDirectiveLocation : one of SCHEMA SCALAR OBJECT FIELD_DEFINITION ARGUMENT_DEFINITION INTERFACE UNION ENUM ENUM_VALUE INPUT_OBJECT INPUT_FIELD_DEFINITION
+ */
+func (parser *Parser) directiveLocations() ([]*DirectiveLocation, map[string]*DirectiveLocation, error) {
+	members := []*DirectiveLocation{}
+	membersList := map[string]*DirectiveLocation{}
+	for {
+		namedType, err := parser.namedType()
+		if err != nil {
+			return nil, nil, err
+		}
+		if _, ok := directiveLocations[namedType.Name.Value]; !ok {
+			return nil, nil, &GraphQLError{
+				Message: fmt.Sprintf("GraphQL Syntax Error (%d:%d) Invalid Directive Location \"%s\"", parser.lookahead.Start.Line, parser.lookahead.Start.Column, namedType.Name.Value),
+				Source:  parser.source,
+				Start:   parser.lookahead.Start,
+				End:     parser.lookahead.End,
+			}
+		}
+		loc := DirectiveLocation(*namedType)
+		members = append(members, &loc)
+		membersList[loc.Name.Value] = &loc
+		if parser.lookahead.Type == PIPE {
+			err = parser.match(PIPE)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			break
+		}
+	}
+	return members, membersList, nil
 }

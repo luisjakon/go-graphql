@@ -29,10 +29,66 @@ type Document struct {
 	InputObjectTypeIndex map[string]*InputObjectTypeDefinition
 	ScalarTypeIndex      map[string]*ScalarTypeDefinition
 	EnumTypeIndex        map[string]*EnumTypeDefinition
+	DirectiveIndex       map[string]*DirectiveDefinition
 	TypeIndex            map[string]ASTNode
 	OperationIndex       map[string]*OperationDefinition
+	SchemaIndex          map[string]*SchemaDefinition
 	PossibleTypesIndex   map[string][]*ObjectTypeDefinition
 	LOC                  *LOC
+}
+
+// ExecutableDirectiveLocation
+// TypeSystemDirectiveLocation
+const (
+	QUERY                  = "QUERY"
+	MUTATION               = "MUTATION"
+	SUBSCRIPTION           = "SUBSCRIPTION"
+	FIELD                  = "FIELD"
+	FRAGMENT_DEFINITION    = "FRAGMENT_DEFINITION"
+	FRAGMENT_SPREAD        = "FRAGMENT_SPREAD"
+	INLINE_FRAGMENT        = "INLINE_FRAGMENT"
+	SCHEMA                 = "SCHEMA "
+	SCALAR                 = "SCALAR"
+	OBJECT                 = "OBJECT"
+	FIELD_DEFINITION       = "FIELD_DEFINITION"
+	ARGUMENT_DEFINITION    = "ARGUMENT_DEFINITION"
+	INTERFACE              = "INTERFACE"
+	UNION                  = "UNION"
+	ENUM                   = "ENUM"
+	ENUM_VALUE             = "ENUM_VALUE"
+	INPUT_OBJECT           = "INPUT_OBJECT"
+	INPUT_FIELD_DEFINITION = "INPUT_FIELD_DEFINITION"
+)
+
+var directiveLocations = map[string]string{
+	QUERY:                  "QUERY",
+	MUTATION:               "MUTATION",
+	SUBSCRIPTION:           "SUBSCRIPTION",
+	FIELD:                  "FIELD",
+	FRAGMENT_DEFINITION:    "FRAGMENT_DEFINITION",
+	FRAGMENT_SPREAD:        "FRAGMENT_SPREAD",
+	INLINE_FRAGMENT:        "INLINE_FRAGMENT",
+	SCHEMA:                 "SCHEMA",
+	SCALAR:                 "SCALAR",
+	OBJECT:                 "OBJECT",
+	FIELD_DEFINITION:       "FIELD_DEFINITION",
+	ARGUMENT_DEFINITION:    "ARGUMENT_DEFINITION",
+	INTERFACE:              "INTERFACE",
+	UNION:                  "UNION",
+	ENUM:                   "ENUM",
+	ENUM_VALUE:             "ENUM_VALUE",
+	INPUT_OBJECT:           "INPUT_OBJECT",
+	INPUT_FIELD_DEFINITION: "INPUT_FIELD_DEFINITION",
+}
+
+type SchemaDefinition struct {
+	Name           *Name
+	Description    string
+	Operations     []*FieldDefinition
+	OperationIndex map[string]*FieldDefinition
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type OperationDefinition struct {
@@ -232,9 +288,11 @@ type Directive struct {
 }
 
 type Argument struct {
-	Name  *Name
-	Value ASTNode
-	LOC   *LOC
+	Name           *Name
+	Value          ASTNode
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type Int struct {
@@ -279,12 +337,14 @@ type Enum struct {
 }
 
 type ObjectTypeDefinition struct {
-	Name        *Name
-	Description string
-	Interfaces  []*NamedType
-	Fields      []*FieldDefinition
-	FieldIndex  map[string]*FieldDefinition
-	LOC         *LOC
+	Name           *Name
+	Description    string
+	Interfaces     []*NamedType
+	Fields         []*FieldDefinition
+	FieldIndex     map[string]*FieldDefinition
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type FieldDefinition struct {
@@ -294,43 +354,55 @@ type FieldDefinition struct {
 	DeprecationReason string
 	Arguments         []*InputValueDefinition
 	ArgumentIndex     map[string]*InputValueDefinition
+	Directives        []*Directive
+	DirectiveIndex    map[string]*Directive
 	Type              ASTNode
 	LOC               *LOC
 }
 
 type InputValueDefinition struct {
-	Name         *Name
-	Description  string
-	Type         ASTNode
-	DefaultValue ASTNode
-	LOC          *LOC
+	Name           *Name
+	Description    string
+	Type           ASTNode
+	DefaultValue   ASTNode
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type InterfaceTypeDefinition struct {
-	Name        *Name
-	Description string
-	Fields      []*FieldDefinition
-	LOC         *LOC
+	Name           *Name
+	Description    string
+	Fields         []*FieldDefinition
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type UnionTypeDefinition struct {
-	Name        *Name
-	Description string
-	Types       []*NamedType
-	LOC         *LOC
+	Name           *Name
+	Description    string
+	Types          []*NamedType
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type ScalarTypeDefinition struct {
-	Name        *Name
-	Description string
-	LOC         *LOC
+	Name           *Name
+	Description    string
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type EnumTypeDefinition struct {
-	Name        *Name
-	Description string
-	Values      []*EnumValueDefinition
-	LOC         *LOC
+	Name           *Name
+	Description    string
+	Values         []*EnumValueDefinition
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type EnumValueDefinition struct {
@@ -338,15 +410,19 @@ type EnumValueDefinition struct {
 	Description       string
 	IsDeprecated      bool
 	DeprecationReason string
+	Directives        []*Directive
+	DirectiveIndex    map[string]*Directive
 	LOC               *LOC
 }
 
 type InputObjectTypeDefinition struct {
-	Name        *Name
-	Description string
-	Fields      []*InputValueDefinition
-	FieldIndex  map[string]*InputValueDefinition
-	LOC         *LOC
+	Name           *Name
+	Description    string
+	Fields         []*InputValueDefinition
+	FieldIndex     map[string]*InputValueDefinition
+	Directives     []*Directive
+	DirectiveIndex map[string]*Directive
+	LOC            *LOC
 }
 
 type TypeExtensionDefinition struct {
@@ -354,3 +430,15 @@ type TypeExtensionDefinition struct {
 	Definition  *ObjectTypeDefinition
 	LOC         *LOC
 }
+
+type DirectiveDefinition struct {
+	Name          *Name
+	Description   string
+	Arguments     []*InputValueDefinition
+	ArgumentIndex map[string]*InputValueDefinition
+	Locations     []*DirectiveLocation
+	LocationIndex map[string]*DirectiveLocation
+	LOC           *LOC
+}
+
+type DirectiveLocation NamedType
