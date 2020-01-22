@@ -1367,6 +1367,41 @@ input Hello {
 			})
 			So(err, ShouldNotEqual, nil)
 		})
+
+		Convey("multiline descriptions", func() {
+			result, err = parser.Parse(&ParseParams{
+				Source: `
+# Comment
+"""
+Multiline Description on Scalar
+Line 2
+"""
+scalar Scalar
+
+"""
+Multiline Description on Object
+Line 2
+"""
+type Object {
+	"""
+	Multiline Description on Field
+	Line 2
+	"""
+	field: String!
+}
+`,
+			})
+			So(err, ShouldEqual, nil)
+
+			scalar := result.Definitions[0].(*ScalarTypeDefinition)
+			object := result.Definitions[1].(*ObjectTypeDefinition)
+			field := object.Fields[0]
+
+			So(scalar.Description, ShouldEqual, "Multiline Description on Scalar\nLine 2")
+			So(object.Description, ShouldEqual, "Multiline Description on Object\nLine 2")
+			So(field.Description, ShouldEqual, "\tMultiline Description on Field\n\tLine 2\n\t")
+		})
+
 	})
 
 }

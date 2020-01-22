@@ -53,6 +53,7 @@ const (
 	BOOL   // true, false
 	NULL   // null
 
+	MULTILINE_STRING // """abc\ndef"""
 )
 
 func (tokenType TokenType) String() string {
@@ -111,6 +112,8 @@ func (tokenType TokenType) String() string {
 		return "Boolean"
 	case NULL:
 		return "null"
+	case MULTILINE_STRING:
+		return "MultilineString"
 	default:
 		return "Unknown"
 	}
@@ -196,6 +199,9 @@ func (lexer *Lexer) Emit(tokenType TokenType) {
 		if err != nil {
 			panic(err)
 		}
+	}
+	if tokenType == MULTILINE_STRING {
+		value = value[3 : len(value)-3]
 	}
 	lexer.Tokens <- Token{tokenType, value, startPos, endPos}
 	lexer.Start = lexer.Pos
@@ -351,6 +357,9 @@ func LexText(lexer *Lexer) StateFn {
 			lexer.Backup()
 			return LexComment
 		case rn == '"':
+			if lexer.AcceptString("\"\"") {
+				return LexMultilineQuote
+			}
 			lexer.Backup()
 			return LexQuote
 		case rn == '.':
@@ -433,6 +442,27 @@ func LexComment(lexer *Lexer) StateFn {
 			lexer.Line += 1
 			lexer.Column = 1
 			return LexText
+		}
+	}
+	return LexText
+}
+
+func LexMultilineQuote(lexer *Lexer) StateFn {
+	for {
+		switch rn := lexer.Next(); rn {
+		case -1, '\u000A', '\u000D':
+			if rn == '\u000D' && lexer.Peek() == '\u000A' {
+				lexer.Next()
+			}
+			lexer.Line += 1
+			lexer.Column = 1
+			continue
+		case '"':
+			if lexer.AcceptString("\"\"") {
+				lexer.Emit(MULTILINE_STRING)
+				return LexText
+			}
+			return lexer.Errorf(`GraphQL Syntax Error (%d:%d) Invalid multiline description`, lexer.Line, lexer.Column-1)
 		}
 	}
 	return LexText

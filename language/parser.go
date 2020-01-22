@@ -112,19 +112,29 @@ func (parser *Parser) description() (string, error) {
 	text := ""
 	isBody := false
 	token := parser.lookahead
-	for token.Type == DESCRIPTION {
-		text += strings.Trim(token.Val[2:], " ")
-		if isBody {
-			text += " "
-		} else {
-			isBody = true
+	switch token.Type {
+	case STRING:
+		for token.Type == STRING {
+			text += strings.Trim(token.Val, " ")
+			if isBody {
+				text += " "
+			} else {
+				isBody = true
+			}
+			err := parser.match(STRING)
+			if err != nil {
+				return text, err
+			}
+			token = parser.lookahead
 		}
-		err := parser.match(DESCRIPTION)
+	case MULTILINE_STRING:
+		err := parser.match(MULTILINE_STRING)
 		if err != nil {
 			return text, err
 		}
-		token = parser.lookahead
+		text = strings.Trim(token.Val, "\n")
 	}
+
 	return text, nil
 }
 
