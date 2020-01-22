@@ -430,7 +430,10 @@ func LexComment(lexer *Lexer) StateFn {
 	}
 	for {
 		switch rn := lexer.Next(); rn {
-		case -1, '\u000A', '\u000D':
+		case -1:
+			lexer.Backup()
+			return LexText
+		case '\u000A', '\u000D':
 			if rn == '\u000D' && lexer.Peek() == '\u000A' {
 				lexer.Next()
 			}
